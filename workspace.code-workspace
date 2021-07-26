@@ -1,0 +1,10 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"solidity.compileUsingRemoteVersion": "0.8.0"
+	}
+}
