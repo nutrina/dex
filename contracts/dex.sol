@@ -85,13 +85,13 @@ contract Dex is Wallet {
         if (side == Side.BUY) {
             require(
                 balances[msg.sender]["ETH"] >= amount.mul(price),
-                "Balance not sufficient"
+                "ETH Balance not sufficient"
             );
             return _createLimitOrder(side, ticker, amount, price);
         } else {
             require(
                 balances[msg.sender][ticker] >= amount,
-                "Balance not sufficient"
+                "Token Balance not sufficient"
             );
             return _createLimitOrder(side, ticker, amount, price);
         }
@@ -162,15 +162,60 @@ contract Dex is Wallet {
         internal
         returns (uint256, uint256)
     {
-        require(
-            balances[msg.sender][ticker] >= _amount,
-            "Balance not sufficient"
-        );
-        Order[] storage orders = orderBook[ticker][uint256(Side.SELL)];
-        uint256 i;
+        Order[] storage orders = orderBook[ticker][uint256(Side.BUY)];
         uint256 totalETHSpent = 0;
         uint256 amount = _amount;
 
+        for (uint256 _i = orders.length; _i > 0; _i--) {
+            Order storage order = orders[_i - 1];
+            uint256 usedAmount;
+
+            if (order.amount > amount) {
+                usedAmount = amount;
+            } else {
+                usedAmount = order.amount;
+            }
+
+            uint256 totalPrice = usedAmount.mul(order.price);
+            totalETHSpent = totalETHSpent.add(totalPrice);
+
+            // Check that the user still has the necesarry amount for this partial fill
+            require(
+                balances[order.trader]["ETH"] >= totalPrice,
+                "ETH balance not sufficient"
+            );
+            require(
+                balances[msg.sender][ticker] >= usedAmount,
+                "Token balance not sufficient"
+            );
+
+            // Effect: update the ETH amount of buyer and seller
+            balances[order.trader]["ETH"] = balances[order.trader]["ETH"].sub(
+                totalPrice
+            );
+            balances[msg.sender]["ETH"] = balances[msg.sender]["ETH"].add(
+                totalPrice
+            );
+
+            // Effect: update the token amount of buyer and seller
+            balances[order.trader][ticker] = balances[order.trader][ticker].add(
+                usedAmount
+            );
+            balances[msg.sender][ticker] = balances[msg.sender][ticker].sub(
+                usedAmount
+            );
+
+            // Effect: update the orderbook
+            if (order.amount > amount) {
+                order.amount = order.amount.sub(amount);
+                amount = 0;
+                break;
+            } else {
+                amount = amount.sub(order.amount);
+                orders.pop();
+            }
+        }
+        emit OrderFilled(_amount - amount, totalETHSpent);
         return (totalETHSpent, _amount - amount);
     }
 
