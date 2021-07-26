@@ -106,38 +106,51 @@ contract Dex is Wallet {
         uint256 amount = _amount;
 
         for (uint256 _i = orders.length; _i > 0; _i--) {
-            uint256 j = _i - 1;
-            uint256 orderAmount = orders[j].amount;
-            uint256 price = orders[j].price;
+            Order storage order = orders[_i - 1];
             uint256 usedAmount;
 
-            if (orderAmount > amount) {
+            if (order.amount > amount) {
                 usedAmount = amount;
             } else {
-                usedAmount = orderAmount;
+                usedAmount = order.amount;
             }
 
-            uint256 totalPrice = usedAmount.mul(price);
+            uint256 totalPrice = usedAmount.mul(order.price);
             totalETHSpent = totalETHSpent.add(totalPrice);
 
             // Check that the user still has the necesarry amount for this partial fill
             require(
                 balances[msg.sender]["ETH"] >= totalPrice,
-                "Balance not sufficient"
+                "ETH balance not sufficient"
+            );
+            require(
+                balances[order.trader][ticker] >= usedAmount,
+                "Token balance not sufficient"
             );
 
-            // Effect: update the ETH amount
+            // Effect: update the ETH amount of buyer and seller
             balances[msg.sender]["ETH"] = balances[msg.sender]["ETH"].sub(
                 totalPrice
             );
+            balances[order.trader]["ETH"] = balances[order.trader]["ETH"].add(
+                totalPrice
+            );
+
+            // Effect: update the token amount of buyer and seller
+            balances[msg.sender][ticker] = balances[msg.sender][ticker].add(
+                usedAmount
+            );
+            balances[order.trader][ticker] = balances[order.trader][ticker].sub(
+                usedAmount
+            );
 
             // Effect: update the orderbook
-            if (orderAmount > amount) {
-                orders[j].amount = orders[j].amount.sub(amount);
+            if (order.amount > amount) {
+                order.amount = order.amount.sub(amount);
                 amount = 0;
                 break;
             } else {
-                amount = amount.sub(orderAmount);
+                amount = amount.sub(order.amount);
                 orders.pop();
             }
         }

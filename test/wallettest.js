@@ -3,21 +3,17 @@ const Dex = artifacts.require("Dex");
 const Link = artifacts.require("Link");
 const truffleAssert = require("truffle-assertions");
 
-contract.skip("Wallet", accounts => {
+contract("Wallet", accounts => {
     before(async() => {
-        console.log("BEFORE ONCE !!!");
     });
 
     after(async() => {
-        console.log("AFTER ONCE !!!");
     });
 
     beforeEach(async() => {
-        console.log("BEFORE EACH !!!");
     });
 
     afterEach(async() => {
-        console.log("AFTER EACH !!!");
     });
 
     it("should only be possible for owner to add tokens", async () => {
